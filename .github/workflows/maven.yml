@@ -34,22 +34,7 @@ jobs:
         settings-path: ${{ github.workspace }} # location for the settings.xml file
         cache-dependency-path: ./my-app
         github_token: ${{ secrets.GITHUB_TOKEN }}
-    
-    # - name: Bump Version
-    #   id: bump 
-    #   uses: nnichols/maven-version-bump-action@v3
-    #   with:
-    #     github-token: ${{ secrets.TOKEN }}
-    #     pom-path: ./my-app
-    #     git-username: chernymike
-        # working-directory: ./my-app
-    
-    # - name: get version number
-    #   id: version
-    #   run: |
-    #     POMPATH=my-app
-    #     NEW_VERSION=$(cd $POMPATH && mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-    #     echo ::set-output name=jar_version::${NEW_VERSION}
+        
     - name: Bump jar version
       id: bump
       run: |
