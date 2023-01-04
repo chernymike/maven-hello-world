@@ -61,8 +61,7 @@ jobs:
           path: target/
     - name: Docker build
       run: |
-        pwd 
-        ls
+        cd ./my-app
         docker build . -t chernymike/cherny-maven:${{needs.build.outputs.jar_version}}
     - name: Login to DockerHub
       uses: docker/login-action@v1
