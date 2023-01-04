@@ -42,26 +42,16 @@ jobs:
     - name: Build with Maven
       run: mvn -B package --file my-app/pom.xml
       
-    - name: Temporarily save jar artifact
-      uses: actions/upload-artifact@v2
+    - name: Create artifact
+      uses: actions/create-artifact@v2
       with:
         name: jar-artifact
         path: ${{ github.workspace }}/my-app/target/*.jar
-        retention-days: 1
-  
-  deploy:
-    runs-on: ubuntu-18.04
-    needs: build
         
-    steps:
-    - uses: actions/checkout@v2
-    - uses: actions/download-artifact@v1
-      with:
-          name: jar-artifact
-          path: target/
     - name: Docker build
       run: |
-        docker build . -t chernymike/cherny-maven:${{needs.build.outputs.jar_version}}
+        docker build . -t chernymike/cherny-maven:${{steps.bump.outputs.jar_version}}
+        
     - name: Login to DockerHub
       uses: docker/login-action@v1
       with:
@@ -70,7 +60,8 @@ jobs:
 
     - name: Docker push
       run: |
-        docker push chernymike/cherny-maven:${{needs.build.outputs.jar_version}}
+        docker push chernymike/cherny-maven:${{steps.bump.outputs.jar_version}}
         
     - name: Download and run Docker
-      run: docker run -p 8080:8080 my-repository:${{ github.event.head_commit.id }}
+      run: |
+        docker run -p 8080:8080 my-repository:${{ github.event.head_commit.id }}
