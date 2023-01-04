@@ -14,9 +14,17 @@ jobs:
       with:
         java-version: 1.8
     - name: Increase patch version
-      uses: maxkomarychev/patch-version@v1
-      with:
-        version: patch
+      runs: |
+        # Replace "1.0.0" with the current version of your project
+        current_version="1.0.0"
+        # Extract patch version
+        patch_version=$(echo $current_version | cut -d '.' -f 3)
+        # Increment patch version
+        new_patch_version=$((patch_version + 1))
+        # Construct new version
+        new_version=$(echo $current_version | cut -d '.' -f 1-2).$new_patch_version
+        # Update pom.xml
+        sed -i "s/$current_version/$new_version/g" pom.xml
     - name: Build with Maven
       run: mvn package
     - name: Create artifact
