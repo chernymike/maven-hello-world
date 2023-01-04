@@ -19,7 +19,7 @@ jobs:
       run: cd ./my-app/src
       
     - name: Set up JDK 8
-      uses: actions/setup-java@v1
+      uses: actions/setup-java@v2
       with:
         java-version: 8
         
