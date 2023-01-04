@@ -43,7 +43,7 @@ jobs:
       run: mvn -B package --file my-app/pom.xml
       
     - name: Create artifact
-      uses: actions/create-artifact@v2
+      uses: actions/create-artifact@v3
       with:
         name: jar-artifact
         path: ${{ github.workspace }}/my-app/target/*.jar
