@@ -54,7 +54,7 @@ jobs:
         
     - name: Docker build
       run: |
-        docker build . -t chernymike/cherny-maven:${{steps.bump.outputs.jar_version}}
+        docker build . -t chernymike/cherny-maven:${{needs.build.outputs.jar_version}}
         
     - name: Login to DockerHub
       uses: docker/login-action@v1
@@ -64,7 +64,7 @@ jobs:
 
     - name: Docker push
       run: |
-        docker push chernymike/cherny-maven:${{steps.bump.outputs.jar_version}}
+        docker push chernymike/cherny-maven:${{needs.build.outputs.jar_version}}
         
     - name: Download and run Docker
       run: |
