@@ -1,73 +1,57 @@
-name: Build
+name: Maven Package
 
 on:
-  push:
-    branches: [ master ]
+  [push]
 
 jobs:
-  bump:
-    runs-on: ubuntu-latest
-    outputs:
-      jar_version: ${{ steps.bump.outputs.jar_version }}
-    steps:
-      - uses: actions/checkout@v2
-      
-      - name: Determine bump type
-        run: |
-          COMMIT_MESSAGE=$(git log -1 --pretty=%B)
-          BUMP_TYPE="patch"
-          if [[ $COMMIT_MESSAGE == *"#major"* ]]; then
-            BUMP_TYPE="major"
-          elif [[ $COMMIT_MESSAGE == *"#minor"* ]]; then
-            BUMP_TYPE="minor"
-          fi
-      
-      - name: Bump version
-        run: |
-          POMPATH=my-app
-          OLD_VERSION=$(cd $POMPATH && mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
-          old="$OLD_VERSION"
-          parts=( ${old//./ } )
-          if [ "$BUMP_TYPE" == "major" ]; then
-            bv=0
-            parts[1]=0
-            parts[2]=0
-          elif [ "$BUMP_TYPE" == "minor" ]; then
-            bv=0
-            parts[2]=0
-          else
-            bv=$((parts[2] + 1))
-          fi
-          NEW_VERSION="${parts[0]}.${parts[1]}.${bv}"
-          mvn -q versions:set -DnewVersion="${NEW_VERSION}" --file $POMPATH/pom.xml
-          echo ::set-output name=jar_version::${NEW_VERSION}
-          
   build:
     runs-on: ubuntu-latest
-    needs: bump
     permissions:
       contents: read
       packages: write
+    outputs:
+      jar_version: ${{ steps.bump.outputs.jar_version }}
+
     steps:
     - uses: actions/checkout@v2
-    - uses: actions/setup-java@v2
+    - name: Set up JDK 8
+      uses: actions/setup-java@v2
       with:
         java-version: '8'
         distribution: 'adopt'
         server-id: github # Value of the distributionManagement/repository/id field of the pom.xml
         settings-path: ${{ github.workspace }} # location for the settings.xml file
-    - run: cd my-app/src
-    - run: mvn -B compile --file my-app/pom.xml
-    - run: mvn -B package --file my-app/pom.xml
-    - uses: actions/upload-artifact@v2
+
+    - name: Bump jar version
+      id: bump
+      run: |
+        POMPATH=my-app
+        OLD_VERSION=$(cd $POMPATH && mvn help:evaluate -Dexpression=project.version -q -DforceStdout)
+        BUMP_MODE="none"
+        old="$OLD_VERSION"
+        parts=( ${old//./ } )
+        bv=$((parts[2] + 1))
+        NEW_VERSION="${parts[0]}.${parts[1]}.${bv}"
+        echo "pom.xml at" $POMPATH "will be bumped from" $OLD_VERSION "to" $NEW_VERSION
+        mvn -q versions:set -DnewVersion="${NEW_VERSION}" --file $POMPATH/pom.xml
+        echo ::set-output name=jar_version::${NEW_VERSION}
+
+    - name: Compile
+      run: mvn -B compile --file my-app/pom.xml
+
+    - name: Build a package
+      run: mvn -B package --file my-app/pom.xml
+
+    - name: Temporarily save jar artifact
+      uses: actions/upload-artifact@v2
       with:
         name: jar-artifact
-        path: my-app/target/*.jar
+        path: ${{ github.workspace }}/my-app/target/*.jar
         retention-days: 1
-        
+
   deploy:
     runs-on: ubuntu-18.04
-    needs: bump
+    needs: build
 
     steps:
     - uses: actions/checkout@v2
@@ -75,8 +59,9 @@ jobs:
       with:
           name: jar-artifact
           path: target/
-    - run: |
-        docker build . -t chernymike/cherny-maven:${{needs.bump.outputs.jar_version}}
+    - name: Docker build
+      run: |
+        docker build . -t chernymike/cherny-maven:${{needs.build.outputs.jar_version}}
     - name: Login to DockerHub
       uses: docker/login-action@v1
       with:
@@ -85,13 +70,12 @@ jobs:
 
     - name: Docker push
       run: |
-        docker push chernymike/cherny-maven:${{needs.bump.outputs.jar_version}}
-        
+        docker push chernymike/cherny-maven:${{needs.build.outputs.jar_version}}
   run:
     runs-on: ubuntu-18.04
-    needs: bump
+    needs: [build, deploy]
 
     steps:
     - name: Run container
       run: |
-        docker run chernymike/cherny-maven:${{needs.bump.outputs.jar_version}}
+        docker run chernymike/cherny-maven::${{needs.build.outputs.jar_version}}
